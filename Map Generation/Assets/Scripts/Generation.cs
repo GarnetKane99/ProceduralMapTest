@@ -7,6 +7,8 @@ public class Generation : MonoBehaviour
 {
     public Tilemap TilesInScene;
     public Tile Grass, Water, Dirt;
+
+    public Tile[] FloorTiles;
     public GameObject NodeToSpawn, ParentNode;
 
     public List<GameObject> Tiles;
@@ -70,7 +72,7 @@ public class Generation : MonoBehaviour
             if (Tiles[RandomNumber].GetComponent<NodeController>().Grass == false)
             {
                 Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[RandomNumber].transform.position);
-                TilesInScene.SetTile(CurrentTile, Grass);
+                TilesInScene.SetTile(CurrentTile, FloorTiles[Random.Range(0, FloorTiles.Length)]);
                 Tiles[RandomNumber].GetComponent<NodeController>().Grass = true;
             }
             Invoke("PopulateWater", 1.0f);
@@ -113,132 +115,179 @@ public class Generation : MonoBehaviour
         From.GetComponent<NodeController>().ConnectedObjects.Add(To);
     }
 
-    int Refiner = 0;
-    int GrassRefiner = 0;
+        int Refiner = 0;
+        int GrassRefiner = 0;
 
-    void RefineTiles()
-    {
-        Refiner++;
-
-        for(int i = 0; i < Tiles.Count; i++)
+        void RefineTiles()
         {
-            if (Tiles[i].GetComponent<NodeController>().Water && Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count > 5)
+            Refiner++;
+
+            for(int i = 0; i < Tiles.Count; i++)
             {
-                int GrassCounter = 0;
-                for (int x = 0; x < Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count; x++)
+                if (Tiles[i].GetComponent<NodeController>().Water && Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count > 5)
                 {
-                    if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Grass)
+                    int GrassCounter = 0;
+                    for (int x = 0; x < Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count; x++)
                     {
-                        GrassCounter++;
-                    }
-                    if (GrassCounter > 5)
-                    {
-                        Tiles[i].GetComponent<NodeController>().Dirt = true;
+                        if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Grass)
+                        {
+                            GrassCounter++;
+                        }
+                        if (GrassCounter > 5)
+                        {
+                            Tiles[i].GetComponent<NodeController>().Dirt = true;
+                        }
                     }
                 }
             }
+            Invoke("FixTiles", 1.0f);
         }
-        Debug.Log("Fixing Mid");
-        Invoke("FixTiles", 1.0f);
-    }
 
-    void FixTiles()
-    {
-        for(int i = 0; i < Tiles.Count; i++)
+        void FixTiles()
         {
-            if(Tiles[i].GetComponent<NodeController>().Dirt)
+            for(int i = 0; i < Tiles.Count; i++)
             {
-                Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
-                TilesInScene.SetTile(CurrentTile, Grass);
-                Tiles[i].GetComponent<NodeController>().Grass = true;
-                Tiles[i].GetComponent<NodeController>().Dirt = false;
-                Tiles[i].GetComponent<NodeController>().Water = false;
+                if(Tiles[i].GetComponent<NodeController>().Dirt)
+                {
+                    Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
+                    TilesInScene.SetTile(CurrentTile, FloorTiles[Random.Range(0, FloorTiles.Length)]);
+                    Tiles[i].GetComponent<NodeController>().Grass = true;
+                    Tiles[i].GetComponent<NodeController>().Dirt = false;
+                    Tiles[i].GetComponent<NodeController>().Water = false;
+                }
             }
+            if (Refiner < 5)
+                Invoke("RefineTiles", 1.0f);
+            else
+                Invoke("RefineGrass", 1.0f);
         }
-        if (Refiner < 5)
-            Invoke("RefineTiles", 1.0f);
-        else
-            Invoke("RefineGrass", 1.0f);
-    }
 
-    void RefineGrass()
+        void RefineGrass()
+        {
+            GrassRefiner++;
+
+            for (int i = 0; i < Tiles.Count; i++)
+            {
+                if (Tiles[i].GetComponent<NodeController>().Grass && Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count > 5)
+                {
+                    int WaterCounter = 0;
+                    for (int x = 0; x < Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count; x++)
+                    {
+                        if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Water)
+                        {
+                            WaterCounter++;
+                        }
+                        if (WaterCounter > 5)
+                        {
+                            Tiles[i].GetComponent<NodeController>().Dirt = true;
+                        }
+                    }
+                }
+            }
+            Invoke("FixWater", 1.0f);
+        }
+
+        void FixWater()
+        {
+            for (int i = 0; i < Tiles.Count; i++)
+            {
+                if (Tiles[i].GetComponent<NodeController>().Dirt)
+                {
+                    Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
+                    TilesInScene.SetTile(CurrentTile, Water);
+                    Tiles[i].GetComponent<NodeController>().Grass = false; 
+                    Tiles[i].GetComponent<NodeController>().Dirt = false;
+                    Tiles[i].GetComponent<NodeController>().Water = true;
+                }
+            }
+            Invoke("RefineFloor", 1.0f);
+        }
+
+    void RefineFloor()
     {
-        GrassRefiner++;
-
         for (int i = 0; i < Tiles.Count; i++)
         {
             if (Tiles[i].GetComponent<NodeController>().Grass && Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count > 5)
             {
-                int WaterCounter = 0;
                 for (int x = 0; x < Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count; x++)
                 {
-                    if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Water)
+                    if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Grass == true)
                     {
-                        WaterCounter++;
-                    }
-                    if (WaterCounter > 5)
-                    {
-                        Tiles[i].GetComponent<NodeController>().Dirt = true;
+                        if (Tiles[i].transform.position.x == Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].transform.position.x)
+                        {
+                            Tiles[i].GetComponent<NodeController>().Safe = true;
+                        }
+                        else if (Tiles[i].transform.position.y == Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].transform.position.y)
+                        {
+                            Tiles[i].GetComponent<NodeController>().Safe = true;
+                        }
+                        else
+                        {
+                            Tiles[i].GetComponent<NodeController>().Unsafe = true;
+                        }
                     }
                 }
             }
         }
-        Invoke("FixWater", 1.0f);
+        Invoke("FixFloor", 1.0f);
     }
 
-    void FixWater()
+    void FixFloor()
     {
         for (int i = 0; i < Tiles.Count; i++)
         {
-            if (Tiles[i].GetComponent<NodeController>().Dirt)
+            if (Tiles[i].GetComponent<NodeController>().Unsafe)
             {
-                Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
-                TilesInScene.SetTile(CurrentTile, Water);
-                Tiles[i].GetComponent<NodeController>().Grass = false; 
-                Tiles[i].GetComponent<NodeController>().Dirt = false;
-                Tiles[i].GetComponent<NodeController>().Water = true;
-            }
-        }
-        Invoke("EdgeChecker", 1.0f);
-    }
-
-    void EdgeChecker()
-    {
-        for (int i = 0; i < Tiles.Count; i++)
-        {
-            if (Tiles[i].GetComponent<NodeController>().Grass && Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count == 5)
-            {
-                int GrassCounter = 0;
-                for (int x = 0; x < Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count; x++)
+                Tiles[i].GetComponent<NodeController>().Dirt = true;
+                if (Tiles[i].GetComponent<NodeController>().Dirt)
                 {
-                    if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Water)
-                    {
-                        GrassCounter++;
-                    }
-                    if (GrassCounter > 3)
-                    {
-                        Tiles[i].GetComponent<NodeController>().Dirt = true;
-                    }
+                    Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
+                    TilesInScene.SetTile(CurrentTile, Water);
+                    Tiles[i].GetComponent<NodeController>().Grass = false;
+                    Tiles[i].GetComponent<NodeController>().Dirt = false;
+                    Tiles[i].GetComponent<NodeController>().Water = true;
                 }
             }
         }
-
-        Debug.Log("Fixing Edges");
-        Invoke("FixEdge", 1.0f);
     }
 
-    void FixEdge()
-    {
-        for (int i = 0; i < Tiles.Count; i++)
-        {
-            if (Tiles[i].GetComponent<NodeController>().Dirt)
+    /*        void EdgeChecker()
             {
-                Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
-                TilesInScene.SetTile(CurrentTile, Water);
-                Tiles[i].GetComponent<NodeController>().Grass = false;
-                Tiles[i].GetComponent<NodeController>().Dirt = false;
-                Tiles[i].GetComponent<NodeController>().Water = true;
+                for (int i = 0; i < Tiles.Count; i++)
+                {
+                    if (Tiles[i].GetComponent<NodeController>().Grass && Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count == 5)
+                    {
+                        int GrassCounter = 0;
+                        for (int x = 0; x < Tiles[i].GetComponent<NodeController>().ConnectedObjects.Count; x++)
+                        {
+                            if (Tiles[i].GetComponent<NodeController>().ConnectedObjects[x].GetComponent<NodeController>().Water)
+                            {
+                                GrassCounter++;
+                            }
+                            if (GrassCounter > 3)
+                            {
+                                Tiles[i].GetComponent<NodeController>().Dirt = true;
+                            }
+                        }
+                    }
+                }
+
+                Debug.Log("Fixing Edges");
+                Invoke("FixEdge", 1.0f);
             }
-        }
-    }
+
+            void FixEdge()
+            {
+                for (int i = 0; i < Tiles.Count; i++)
+                {
+                    if (Tiles[i].GetComponent<NodeController>().Dirt)
+                    {
+                        Vector3Int CurrentTile = TilesInScene.WorldToCell(Tiles[i].transform.position);
+                        TilesInScene.SetTile(CurrentTile, Water);
+                        Tiles[i].GetComponent<NodeController>().Grass = false;
+                        Tiles[i].GetComponent<NodeController>().Dirt = false;
+                        Tiles[i].GetComponent<NodeController>().Water = true;
+                    }
+                }
+            }*/
 }
