@@ -12,6 +12,12 @@ public class NodeController : MonoBehaviour
     public List<GameObject> ConnectedObjects;
     public bool Safe = false, Unsafe = false;
 
+    [Header("Wall Type")]
+    public bool left = false;
+    public bool right = false;
+    public bool up = false;
+    public bool down = false;
+
     void Start()
     {
         //ConnectedObjects = new List<GameObject>();
